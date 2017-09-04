@@ -1,0 +1,149 @@
+---
+title: "CSCI E-63C: Week 1 Assignment"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Preface
+
+This assignment, albeit not particularly sophisticated conceptually or technically, is designed to achieve two goals:
+
+* make sure that you have correctly setup computational infrastructure (i.e. you can knit HTML representation of your results in R studio, that includes writing code performing necessary computations, executing it, including its results in graphical and numerical form into Rmarkdown document and converting it to HTML format)
+* jump start/refresh your statistical intuition (by drawing random samples from known distributions, estimating, plotting and describing properties of those samples over multiple random trials, etc).
+
+To that end this assignment is presented in the form of Rmarkdown file that can be opened and knitted to HTML in Rstudio and HTML file generated as a result of it.  It also includes an example of drawing random samples from binomial distribution and plotting resulting values as histograms using two frequently used graphical facilities in R: standard plots and `ggplot2` package.
+
+One way to get started on this assignment is to open this Rmarkdown (.Rmd) file in Rstudio and "Knit HTML" from  it (there is a button for that!).  Then by modifying Rmarkdown source and recompiling HTML from it you can see how the changes you make impact the resulting output.  At this point you are totally empowered to do what is necessary to complete this assignment as described below.
+
+Your submission (for this as well as for all other upcoming assignments) should always include two files:
+
+1. Working Rmarkdown (.Rmd) source, so that we can:
+    + see the code that generated the results in its entirety
+    + execute it independently if we need to see how it works
+2. HTML representation of the results generated using "Knit HTML" from the above Rmarkdown source
+    + this allows us to evaluate your final product without having to execute the source
+
+That last point -- the ability to see your final results without having to re-run all the computations -- allows to decrease our collective dependency on concordance of each of our setups in terms of file names, locations, etc. that is not the goal of this class in itself.  Try to think "portability", but don't overdo it: it helps to keep each assignment as a separate folder/Rstudio project with all necessary data files in it, include all R functions you write for a given assignment in the same Rmarkdown file (as opposed to sourcing separate file that is easier to forget to add to the submission), use as inputs the same (as opposed to transformed/reformatted) data files that will be provided for future assignments, etc.  But no need to spend your time on detecting and automatically installing missing R packages, for example -- as long as they are standard, we can download them if necessary.
+
+Lastly, while you can turn off display of the code generating the results in the HTML output, and you might want to do it when you disseminate the results with your colleagues who are not interested in the code itself, for the purposes of the grading it is best to *include* the code in HTML output - otherwise we have to go back and forth between HTML and Rmarkdown files that hardly improves our grading efficiency.
+
+
+## A simple example
+
+By the way of showing a simple working example of including code and plots generated from it in the Rmarkdown and HTML produced from it, here are the plots similar to those shown in lecture slides:
+
+```{r simple,fig.width=9,fig.height=3}
+old.par <- par(mfrow=c(1,3),ps=16)
+for ( iTry in 1:3 ) {
+  x=rnorm(50,mean=0,sd=1)
+  hist(x,breaks=10,col='lightgreen',main=paste("Average =",signif(mean(x),3)))
+}
+par(old.par)
+```
+
+You can include numerical results of R computation inline as well, such as the average of the last random sample equal to `r mean(x)` (should you have time and inclination you may want to think on why is its output different from that yielding `r as.character(mean(x))`?).
+
+Here is an example of accomplishing -- for different random samples -- something very similar using `ggplot` (while precluding R code from showing up in HTML output):
+
+```{r simpleggplot,fig.width=9,fig.height=3,echo=FALSE}
+ggplot(transform(data.frame(x=rnorm(150),y=rep(1:3,50)),y=paste("Average =",signif(unlist(lapply(unstack(data.frame(x,y)),mean))[y],3))),aes(x=x))+geom_histogram(binwidth=0.5,colour="black",fill='lightgreen')+facet_wrap(~y)
+```
+
+The choice of which plotting framework to use is totally yours -- we often prefer to be opportunistic and use whichever one is the most expedient for doing what we are aiming to accomplish.
+
+# Problem 1 (30 points).
+
+In class we have developed a simple simulation, in which we were looking at the mean of a sample as a random variable: specifically, we were repeatedly drawing samples of size $N=20$ from the same underlying normal distribution. In order to observe how the sample mean fluctuated from one experiment to the next we have simply drawn a histogram of the obtained mean values. In this problem, we will characterize that distribution of the sample means with its standard deviation AND examine how the spread of the distribution decreases with increasing sample size (in line with quite intuitive notion that if we draw a larger sample, its mean is expected to be closer, at least on average, to the true mean of the underlying population the sample is drawn from). Here's the skeleton of the R code (notice that its evaluation is turned off by `eval=FALSE` code chunk parameter because it is incomplete and will fail otherwise -- once you modified it so that it works, turn it to `eval=TRUE` that is default, so that it gets executed when you "Knit HTML"):
+
+```{r sem,eval=FALSE}
+# different sample sizes we are going to try:
+sample.sizes=c(3,10,50, 100, 500, 1000)
+
+# we will use the vector below to keep the SD of the distribution of the means at each given sample size
+# (note that it's ok to initialize with an empty vector of length 0 - if we index it out of bounds
+# later, it will autoexpand on assignment, see examples in the slides) 
+mean.sds = numeric(0) 
+
+for ( N in sample.sizes ) { # try different sample sizes
+
+ # insert your code here (you may want to check the slides). 
+ # 1) At each given N (i.e. in each iteration of the outer loop) you have to draw large number 
+ # (e.g. 1000) of samples of size N from the distribution of your choice (e.g. normal, uniform, exponential, ...), calculate the mean of each of those samples and save them all into
+ # a vector m.
+ #
+ # 2) Now, with vector m in hand, we want to characterize how much the sample mean fluctuates
+ # from one experiment (experiment=taking a sample of N measurements) to the next. Instead of just
+ # drawing a histogram, this time we will calculate the standard deviation of the distribution
+ # represented by the vector m. Use function sd().
+ #
+ # 3) save the result (sd of the distributions of the means for current N) into the vector means.sds.
+ # You can use c() or you can use an indexing variable, in the latter case you will need to add it to the
+ # code and increment properly
+}
+
+# at this point, you should have the vector mean.sds filled. It should have length 6 and keep the values of 
+# the standard deviation of the mean (known as the standard error of the mean, SEM) at different sample sizes 
+# (mean.sds[1] is the SEM at N=3, mean.sds[2] is the SEM at N=10, and so on)
+
+# let us now PLOT the SEM (i.e. the "typical" error we expect the sample mean to exhibit in any 
+# given experiment) as a function of the sample size, N. 
+
+plot(sample.sizes,mean.sds, main="SEM vs sample size",pch=19)
+lines(sample.sizes,1/sqrt(sample.sizes),col='blue')
+```
+
+In the last lines of the code shown above we introduced `plot()` function: the first argument is the vector of $x$-coordinates, the second argument is the vector of corresponding $y$-coordinates, and the function adds each data point $(x_i, y_i)$ to the plot. In our case, $x$ coordinates are sample sizes $N$ and $y$ coordinates are SEMs we just calculated. By default, `plot()` draws only data points themselves (without connecting lines, which also can be done). The last command calls the function `lines()` which is in fact a wrapper for the same function plot, but has different defaults that are more convenient to us: first, it does not erase the drawing area and start a new plot (that's default behavior of `plot()`), but instead adds to the existing plot; second, it draws lines connecting the the data points. The data points we specify for this function are calculated according to the theoretical prediction that when sample of size $N$ is drawn from a distribution with standard deviation $\sigma$, the standard error of the mean of such sample is $SEM=\frac{\sigma}{\sqrt{N}}$. Thus if you play with this code (please do!) and decide to try drawing samples from a distribution with a different standard deviation, do not forget to use correct $\sigma$ in the last drawing command (in the code above we are using `1/sqrt(sample.sizes)`, i.e. we assume that samples are drawn from the distribution with $\sigma=1$, just like we did in class when we used standard normal distribution with mean $\mu=0$ and standard deviation $\sigma=1$). HINT: your simulated SEM values should fall nicely onto the theoretical curve. If they don't, you got something wrong!
+
+For the full credit on this problem, you have to practice working with R's documentation. Please see the docs -- `help(plot)` or `?plot` -- and find what you need to add to the plot command in our code to set the axis labels. Your resulting plot *must* have X-axis labeled as "Sample size" and y axis labeled as "SEM". This last part will cost 5 points.
+
+If you prefer/are more comfortable to use `ggplot2` as your plotting facility in R (in which case you will know how use `stat_function` to add theoretical curve to a scatterplot), please feel free to accomplish the above goals using it instead of standard plotting functions shown above.  
+
+
+# Problem 2 (30 points).
+
+There is a beautiful fact in statistics called the Central Limit Theorem (CLT). It states that the distribution of a sum of $N$ independent, identically distributed (i.i.d.) random variables $X_i$ has normal distribution in the limit of large $N$, regardless of the distribution of the variables $X_i$ (under some very mild conditions, strictly speaking). Here is what it means in plain English: suppose we have a distribution (and thus a random variable, since random variable is a distribution, drawing a value from the distribution is what "measuring" a random variable amounts to!). Let's draw a value from that distribution, $x_1$. Then let us draw another value $x_2$ from the same distribution, independently, i.e. without any regard to the value(s) we have drawn previously. Continue until we have drawn $N$ values: $x_1, \ldots, x_N$. Let us now calculate the sum $s=\sum_1^Nx_i=x_1+\ldots+x_N$ and call this an "experiment". Clearly, $s$ is a realization of some random variable: if we repeat the experiment (i.e. draw $N$ random values from the distribution again) we will get a completely new realization $x_1, \ldots, x_N$ and the sum will thus take a new value too! Using our notations, we can also describe the situation outlined above as
+
+$$S=X_1+X_2+\ldots+X_N, \;\; X_i \;\; \text{i.i.d.}$$
+
+The fact stated by this equation, that random variable $S$ is the "sum of random variables" is just what we discussed above: the "process" $S$ is *defined* as measuring $N$ processes which are "independent and identically distributed" (i.e. draw from the same distribution) and summing up the results.
+
+We cannot predict what the sum is going to be until we do the actual measuring of $X_1, \ldots, X_N$, so $S$ is a random variable indeed! It has some distribution associated with it (some values of this sum are more likely than others), and what CLT tells us is that at large $N$ this distribution is bound to be normal.
+
+Instead of proving CLT formally, let's simulate and observe it in action.
+
+Here is initial code you will have to complete (remember about `eval=FALSE`):
+
+```{r clt,eval=FALSE}
+N = 1  # the number of i.i.d. variables X we are going to sum
+
+# how many times we are going to repeat the "experiment" (see the text above for what we call an experiment):
+repeats = 1000 
+s.values=numeric() # we will use this vector to store the value of the sum in each experiment
+
+for (n.exp in 1:repeats) { # repeat the experiment!
+   # explained below. Here we must draw the values x1, ..., xN of the random variables we are going to sum up:
+   ### replace with correct call: x = DISTR(N,...) 
+   # the "measured" value of the random variable X is the sum of x1...xN, calculate it and save into 
+   # the vector s.values:
+   ### replace with correct call: s.values[n.exp] = ...???...
+}
+# we repeated the experiment 1000 times, so we have 1000 values sampled from the process S and that should
+# be plenty for looking at their distribution:
+### replace with correct call:   ...DRAW histogram of n.exp values of s.values...
+```
+
+All you need to do is to provide missing pieces of code indicated in the code skeleton above (and run it for multiple values of $N$). You should remember that the sampling functions provided in R do just what we need. For instance, `rnorm(3)` will draw 3 values, independently, from the same normal distribution (with default $\mu=0$ and $\sigma=1$ in this particular example). But that's exactly what measuring 3 i.i.d normally distributed random variables is! So in order to sample our $N$ variables $X_1,\ldots,X_N$ in each experiment, we just need to call the sampling function with $N$ as an argument (and whatever other arguments that specific DISTR function might require). Do *NOT* use `rnorm()` though, it is too dull! Use something very different from normal distribution. Uniform distribution or exponential (as implemented in R by`runif` and `rexp` functions) are good candidates (see help pages for the distribution function you choose in order to see what parameters it might require, if any).  It is also pretty entertaining to see the sum of discrete random variables (e.g. binomial) starting to resemble normal as $N$ increases!
+
+The code above uses $N=1$. In this case $S=X_1$ and obviously $S$ is the same "process" as $X_1$ itself. So the histogram will in fact show you the distribution you have chosen for $X$. Loop over multiple values of $N$ to rerun the code a few times. See how the distribution of $S$ (the histogram we draw) changes for $N=2$, $N=5$, ... Can you see how the distribution quickly becomes normal even though the distribution we are drawing with (the one you have seen at $N=1$) can be very different from normal?
+
+Your solution for this problem must include histogram plots generated at few different $N$ of your choosing, for instance for $N=1$ (i.e. the distribution you choose to sample from), for $N$ large enough so that the distribution of $S$ in the histogram looks very "normal" , and some intermediate $N$, such that distribution of $S$ already visibly departed from $N=1$ but is clearly non-normal just yet.  The plot titles must indicate which distribution and what sample size each of them represents.
+
+Lastly, for the full credit you should answer the following question (5 points): suppose you have an arbitrary distribution and take a sample of $N$ measurements from it. You calculate the mean of your sample. As we discussed, the sample mean is a random variable, of course. How is the sample mean distributed when $N$ becomes large?  What does its average approach (zero? infinity? constant? which one if so?)  What about standard deviation?  Can anything be said about shape of such distribution of sample means in the limit of large $N$?  HINT: look at the definition of the sample mean!
+
+

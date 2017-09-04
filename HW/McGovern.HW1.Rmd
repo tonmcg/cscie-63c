@@ -1,0 +1,115 @@
+---
+title: "CSCI E-63C: Week 1 Assignment"
+author: "Tony McGovern"
+date: "5 September 2017"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+```{r sem,eval=TRUE}
+# different sample sizes we are going to try:
+sample.sizes=c(3,10,50, 100, 500, 1000)
+
+# we will use the vector below to keep the SD of the distribution of the means at each given sample size
+mean.sds = numeric(0) 
+m = numeric(5000) # I want to run a simulation of 5000 trials
+
+
+# initiate the indexing variable to keep the results of the standard deviation of the distributions of means of a sample size N
+j = 1
+
+for ( N in sample.sizes ) { # try different sample sizes
+  for ( i in 1:length(m)) {
+      
+    # 1) At each given N (i.e. in each iteration of the outer loop) you have to draw large number 
+    # (e.g. 1000) of samples of size N from the distribution of your choice (e.g. normal, uniform, exponential, ...), calculate the mean of each of those samples and save them all into
+    # a vector m.
+    m[i]<-mean(rnorm(N))
+  }
+  # 2) Now, with vector m in hand, we want to characterize how much the sample mean fluctuates
+  # from one experiment (experiment=taking a sample of N measurements) to the next. Instead of just
+  # drawing a histogram, this time we will calculate the standard deviation of the distribution
+  # represented by the vector m. Use function sd().
+
+  # 3) save the result (sd of the distributions of the means for current N) into the vector means.sds.
+  # You can use c() or you can use an indexing variable, in the latter case you will need to add it to the
+  # code and increment properly
+  mean.sds[j]<-sd(m)
+  j = j + 1
+}
+
+#plot(sample.sizes,mean.sds, main="SEM vs sample size",pch=19)
+#lines(sample.sizes,1/sqrt(sample.sizes),col='blue')
+
+```
+
+Now visualize the simulations:
+```{r sem_plot}
+
+# I use ggplot2 to visualize the data
+# create a data frame with sample sizes as the vector of x coordinates and the standard deviations of the distribution of the sample means as a the vector of y coordinates
+data<-data.frame(sample.sizes,mean.sds)
+
+# define ggplot as a line graph + scatter plot
+ggplot(data,mapping=aes(x=sample.sizes,y=mean.sds)) + 
+  geom_line(color="grey") + 
+  geom_point(shape=1,color="red") +
+  
+  labs(title="Measuring the Spread of a Distribution of Sample Means",
+       subtitle="Plotting the simulation of the standard deviation of various sample sizes",
+       x="Sampe Size",
+       y="SEM") + 
+  theme_linedraw()
+
+```
+
+# Problem 2.
+
+There is a beautiful fact in statistics called the Central Limit Theorem (CLT). It states that the distribution of a sum of $N$ independent, identically distributed (i.i.d.) random variables $X_i$ has normal distribution in the limit of large $N$, regardless of the distribution of the variables $X_i$ (under some very mild conditions, strictly speaking). Here is what it means in plain English: suppose we have a distribution (and thus a random variable, since random variable is a distribution, drawing a value from the distribution is what "measuring" a random variable amounts to!). Let's draw a value from that distribution, $x_1$. Then let us draw another value $x_2$ from the same distribution, independently, i.e. without any regard to the value(s) we have drawn previously. Continue until we have drawn $N$ values: $x_1, \ldots, x_N$. Let us now calculate the sum $s=\sum_1^Nx_i=x_1+\ldots+x_N$ and call this an "experiment". Clearly, $s$ is a realization of some random variable: if we repeat the experiment (i.e. draw $N$ random values from the distribution again) we will get a completely new realization $x_1, \ldots, x_N$ and the sum will thus take a new value too! Using our notations, we can also describe the situation outlined above as
+
+$$S=X_1+X_2+\ldots+X_N, \;\; X_i \;\; \text{i.i.d.}$$
+
+The fact stated by this equation, that random variable $S$ is the "sum of random variables" is just what we discussed above: the "process" $S$ is *defined* as measuring $N$ processes which are "independent and identically distributed" (i.e. draw from the same distribution) and summing up the results.
+
+We cannot predict what the sum is going to be until we do the actual measuring of $X_1, \ldots, X_N$, so $S$ is a random variable indeed! It has some distribution associated with it (some values of this sum are more likely than others), and what CLT tells us is that at large $N$ this distribution is bound to be normal.
+
+Instead of proving CLT formally, let's simulate and observe it in action.
+
+Here is initial code you will have to complete (remember about `eval=FALSE`):
+
+```{r clt,eval=FALSE}
+N = 1  # the number of i.i.d. variables X we are going to sum
+
+# how many times we are going to repeat the "experiment" (see the text above for what we call an experiment):
+repeats = 1000 
+s.values=numeric() # we will use this vector to store the value of the sum in each experiment
+
+for (n.exp in 1:repeats) { # repeat the experiment!
+   # explained below. Here we must draw the values x1, ..., xN of the random variables we are going to sum up:
+   ### replace with correct call: x = DISTR(N,...) 
+   # the "measured" value of the random variable X is the sum of x1...xN, calculate it and save into 
+   # the vector s.values:
+   ### replace with correct call: s.values[n.exp] = ...???...
+}
+# we repeated the experiment 1000 times, so we have 1000 values sampled from the process S and that should
+# be plenty for looking at their distribution:
+### replace with correct call:   ...DRAW histogram of n.exp values of s.values...
+```
+
+All you need to do is to provide missing pieces of code indicated in the code skeleton above (and run it for multiple values of $N$). You should remember that the sampling functions provided in R do just what we need. For instance, `rnorm(3)` will draw 3 values, independently, from the same normal distribution (with default $\mu=0$ and $\sigma=1$ in this particular example). But that's exactly what measuring 3 i.i.d normally distributed random variables is! So in order to sample our $N$ variables $X_1,\ldots,X_N$ in each experiment, we just need to call the sampling function with $N$ as an argument (and whatever other arguments that specific DISTR function might require). Do *NOT* use `rnorm()` though, it is too dull! Use something very different from normal distribution. Uniform distribution or exponential (as implemented in R by`runif` and `rexp` functions) are good candidates (see help pages for the distribution function you choose in order to see what parameters it might require, if any).  It is also pretty entertaining to see the sum of discrete random variables (e.g. binomial) starting to resemble normal as $N$ increases!
+
+The code above uses $N=1$. In this case $S=X_1$ and obviously $S$ is the same "process" as $X_1$ itself. So the histogram will in fact show you the distribution you have chosen for $X$. Loop over multiple values of $N$ to rerun the code a few times. See how the distribution of $S$ (the histogram we draw) changes for $N=2$, $N=5$, ... Can you see how the distribution quickly becomes normal even though the distribution we are drawing with (the one you have seen at $N=1$) can be very different from normal?
+
+Your solution for this problem must include histogram plots generated at few different $N$ of your choosing, for instance for $N=1$ (i.e. the distribution you choose to sample from), for $N$ large enough so that the distribution of $S$ in the histogram looks very "normal" , and some intermediate $N$, such that distribution of $S$ already visibly departed from $N=1$ but is clearly non-normal just yet.  The plot titles must indicate which distribution and what sample size each of them represents.
+
+Lastly, for the full credit you should answer the following question (5 points): suppose you have an arbitrary distribution and take a sample of $N$ measurements from it. You calculate the mean of your sample. As we discussed, the sample mean is a random variable, of course. How is the sample mean distributed when $N$ becomes large?  What does its average approach (zero? infinity? constant? which one if so?)  What about standard deviation?  Can anything be said about shape of such distribution of sample means in the limit of large $N$?  HINT: look at the definition of the sample mean!
+
+
