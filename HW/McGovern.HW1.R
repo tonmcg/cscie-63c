@@ -1,3 +1,7 @@
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+
 rm(list=ls())
 
 # different sample sizes we are going to try:
@@ -29,36 +33,58 @@ for ( N in sample.sizes ) { # try different sample sizes
   j = j + 1
 }
 
-#plot(sample.sizes,mean.sds, main="SEM vs sample size",pch=19)
-#lines(sample.sizes,1/sqrt(sample.sizes),col='blue')
-
+# I use ggplot2 to visualize the data
+# create a data frame with sample sizes as the vector of x coordinates and the standard deviations of the distribution of the sample means as a the vector of y coordinates
 data<-data.frame(sample.sizes,mean.sds)
 
+# define ggplot as a line graph + scatter plot
 ggplot(data,mapping=aes(x=sample.sizes,y=mean.sds)) + 
   geom_line(color="grey") + 
   geom_point(shape=1,color="red") +
-  labs(x="Sampe Size",y="SEM") + 
+  
+  labs(title="Measuring the Spread of a Distribution of Sample Means",
+       subtitle="Plotting the simulation of the standard deviation of various sample sizes",
+       x="Sampe Size",
+       y="SEM") + 
   theme_linedraw()
 
 ## Problem 2
-# 1. Create an X number of random samples with and N-number of sample sizes
-# 2. 
+dev.off()
+rm(list=ls())
 
-N = 1  # the number of i.i.d. variables X we are going to sum
-
-# how many times we are going to repeat the "experiment" (see the text above for what we call an experiment):
-repeats = 1000 
+repeats = 1000 # the number of trials in our simulation
 s.values=numeric() # we will use this vector to store the value of the sum in each experiment
+y=numeric() # initiate y vector which will hold the N within the sample.sizes vector for each value in s.values
 
-for (n.exp in 1:repeats) { # repeat the experiment!
-  
-  # explained below. Here we must draw the values x1, ..., xN of the random variables we are going to sum up:
-  ### replace with correct call: x = DISTR(N,...) 
-  # the "measured" value of the random variable X is the sum of x1...xN, calculate it and save into 
-  # the vector s.values:
-  ### replace with correct call: s.values[n.exp] = ...???...
+# different sample sizes we are going to try:
+sample.sizes=c(2,5,7,10)
+
+j = 1
+
+for ( N in sample.sizes ) {
+
+  for (n.exp in 1:repeats) { 
+    
+    y[j]<-N
+    
+    # capture the sum of an independent N-number of samples from a uniform distribution
+    s.values[j]<-sum(runif(N)) 
+    j = j + 1
+    
+  }
 }
 
-# we repeated the experiment 1000 times, so we have 1000 values sampled from the process S and that should
-# be plenty for looking at their distribution:
-### replace with correct call:   ...DRAW histogram of n.exp values of s.values...
+# I use ggplot2 to visualize the data
+# create a data frame with a vector containing the sum of independent N-number of samples drawn from a uniform distribution
+data<-data.frame(x=s.values,y=y)
+
+ggplot(data, aes(x=x)) + 
+  geom_histogram(
+    binwidth = 0.5,
+    color="grey",
+    fill='red') +
+  facet_wrap(~y,ncol=2) + 
+  labs(
+    x="Sum of N-number of Samples from Uniform Distribution",
+    y="Number of Trials") +
+  theme_linedraw()
