@@ -1,0 +1,152 @@
+---
+title: 'CSCI E-63C: Week 2 Q&A session'
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(ISLR)
+library(reshape2)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Questions
+
+* Week 1 homework
+* Week 1 lecture
+* Upcoming homework
+* Upcoming quiz
+
+```{r}
+dfTmp <- data.frame(xvals=rnorm(30),yvals=runif(30),nn=rep(c(5,10,20),10))
+ggplot(dfTmp,aes(x=xvals,y=yvals,colour=factor(nn)))+geom_point()+facet_wrap(~nn)
+ggplot(dfTmp[dfTmp$nn!=5,],aes(x=xvals,y=yvals,colour=factor(nn)))+geom_point()+facet_wrap(~nn)
+```
+
+
+# Factors and type conversion example
+
+```{r typeconversion}
+x <- 1:5; someLetters <- letters[seq_along(x)]; someLetters
+names(x) <- someLetters; x
+names(x) <- sample(names(x)); x
+x[someLetters]
+fSomeLetters <- factor(someLetters); fSomeLetters
+as.character(fSomeLetters); x[as.character(fSomeLetters)]
+x[fSomeLetters]
+```
+
+# Some of the R conveniences
+
+* `ggplot2` -- popular plotting package providing unified interface to variety of visualizations (e.g. don't have to remember how to combine `boxplot` and `stripchart`)
+* tidy data: `reshape2`, `plyr`, ... -- very convenient together with `ggplot`, standardizes many common data transformations
+* OOP: class is just an attribute that is easy to change, s3/s4/rc frameworks, dots in names, http://adv-r.had.co.nz/OO-essentials.html
+* `shiny` -- enabling interactive R over web
+
+# S3 OOP in R: a word of caution
+
+```{r s3oop}
+fSomeLetters
+class(fSomeLetters)
+is.object(fSomeLetters) & !isS4(fSomeLetters)
+class(fSomeLetters) <- "Let's get wild here"; class(fSomeLetters)
+fSomeLetters
+class(fSomeLetters) <- c("One class","another class"); fSomeLetters
+# attribute "class" determines which "print" is called:
+class(fSomeLetters) <- "factor"; fSomeLetters
+```
+
+
+
+# ISLR Ch.2.3.4 (Lab)
+
+```{r ch234}
+##?Auto
+class(Auto)
+dim(Auto)
+summary(Auto)
+head(Auto)
+names(Auto)
+colnames(Auto)
+# ISLR says there are 397 rows, five of which include ?'s:
+for ( tmpCnm in colnames(Auto) ) {
+  cat(tmpCnm,class(Auto[,tmpCnm]),sum(Auto[,tmpCnm]=="?"),fill=TRUE)
+}
+#?write.table
+#?read.table
+write.table(Auto,"Auto.txt")
+autoDat <- read.table("Auto.txt")
+head(autoDat)
+dim(autoDat)
+dim(na.omit(autoDat))
+if ( FALSE ) {
+  plot(cylinders, mpg)
+}
+plot(Auto$cylinders, Auto$mpg)
+attach (Auto)
+plot(cylinders, mpg)
+detach (Auto)
+plot(Auto$cylinders, Auto$mpg)
+ggplot(Auto,aes(x=cylinders,y=mpg))+geom_point()
+plot(factor(Auto$cylinders), Auto$mpg, col ="red", varwidth=T, xlab="cylinders", ylab="MPG")
+ggplot(Auto,aes(x=factor(cylinders),y=mpg))+geom_point()
+ggplot(Auto,aes(x=factor(cylinders),y=mpg))+geom_point()+geom_boxplot()
+ggplot(Auto,aes(x=factor(cylinders),y=mpg))+geom_boxplot()+geom_point()
+hist(Auto$mpg)
+hist(Auto$mpg,col="red")
+ggplot(Auto,aes(x=mpg))+geom_histogram()
+ggplot(Auto,aes(x=mpg))+geom_histogram(fill="lightgreen",colour="black")
+pairs(Auto)
+library(GGally)
+ggpairs(Auto[,-ncol(Auto)])
+summary(Auto)
+summary(Auto$mpg)
+```
+
+# ISRL Ch.2.4 (Exercises -- applied)
+
+## Problem 8
+
+```{r ch24problem8}
+summary(College)
+head(College)
+pairs(College[,1:10])
+ggpairs(College[,1:10])
+plot(College$Private,College$Outstate)
+ggplot(College,aes(x=Private,y=Outstate)) + geom_boxplot()
+ggplot(College,aes(x=Top10perc))+geom_histogram()
+College$Elite <- factor(c("No","Yes")[as.numeric(College$Top10perc>50)+1])
+summary(College$Elite)
+table(College$Elite)
+old.par <- par(mfrow=c(1,2),ps=16)
+plot(College$Elite,College$Outstate,xlab="Elite")
+plot(College$Private,College$Outstate,xlab="Private")
+par(old.par)
+head(melt(College[,c("Elite","Private","Outstate")]))
+head(melt(College[,c("Elite","Private","Outstate")],id="Outstate"))
+ggplot(melt(College[,c("Elite","Private","Outstate")],id="Outstate"),aes(x=value,y=Outstate))+geom_boxplot()+facet_wrap(~variable)
+ggplot(melt(College[,c("Elite","Private","Outstate")]),aes(x=Private,y=value,fill=Elite,colour=Elite))+geom_boxplot()+facet_wrap(~variable)
+ggplot(melt(College[,c("Elite","Private","Outstate")]),aes(x=Private,y=value,fill=Elite,colour=Elite))+geom_boxplot(fill="white",outlier.colour=NA)+geom_point(position=position_jitterdodge())+facet_wrap(~variable)
+table(College[,c("Elite","Private")])
+fisher.test(table(College[,c("Elite","Private")]))
+chisq.test(table(College[,c("Elite","Private")]))
+summary(lm(Outstate~Private*Elite,College))
+```
+
+## Problem 9
+
+```{r ch24problem9}
+head(Auto)
+apply(Auto[,1:7],2,range)
+apply(Auto[,1:7],2,mean)
+apply(Auto[,1:7],2,median)
+apply(Auto[,1:7],2,sd)
+apply(Auto[,1:7],2,mad)
+apply(Auto[-(10:85),1:7],2,range)
+apply(Auto[-(10:85),1:7],2,mean)
+apply(Auto[-(10:85),1:7],2,sd)
+pairs(Auto)
+ggpairs(Auto[,-ncol(Auto)])
+```

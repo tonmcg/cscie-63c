@@ -1,0 +1,274 @@
+---
+title: "CSCI E-63C: Week 2 Assignment"
+author: "Tony McGovern"
+date: "12 September 2017"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+# List of packages required for this analysis
+pkg <- c("devtools", "knitr", "tidyr", "readr", "dplyr", "skimr", "ggplot2", "corrplot", "scales", "GGally")
+
+# Check if packages are not installed
+# Assign not installed packages to new.pkg
+new.pkg <- pkg[!(pkg %in% installed.packages())]
+
+# Install any packages not installed
+if (length(new.pkg)) {
+  install.packages(new.pkg, repos = "http://cran.rstudio.com")
+}
+
+# load packages
+library(devtools)
+library(knitr)
+library(tidyr)
+library(readr)
+library(dplyr)
+library(skimr)
+library(ggplot2)
+library(corrplot)
+library(scales)
+library(GGally)
+
+rm(list=ls())
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+# Banknote Authentication
+
+In this problem, I load, explore, visualize, and comment on data that describes bank notes that are both counterfeit and not counterfeit.
+```{r banknote_load, echo = TRUE}
+
+# load data
+url <- "http://archive.ics.uci.edu/ml/machine-learning-databases/00267/data_banknote_authentication.txt"
+banknote.df <- read_delim(url,",", col_names = c("moment2","moment3","moment4","entropy","class"))
+
+```
+
+Describe the data set attributes:
+```{r banknote_attributes, echo = FALSE}
+
+# name the data set attributes
+attributes <- data.frame(
+  "col_name" = c(
+    "moment2",
+    "moment3",
+    "moment4",
+    "entropy",
+    "class"), 
+  "attribute_name" = c(
+    "variance of Wavelet Transformed image (continuous)",
+    "skewness of Wavelet Transformed image (continuous)",
+    "curtosis of Wavelet Transformed image (continuous)", 
+    "entropy of image (continuous)",
+    "class (integer)"))
+
+kable(attributes)
+
+```
+
+The data set has `r dim(banknote.df)[1] ` rows or observations and `r dim(banknote.df)[2]` columns or variables. The predictor variables are *moment2*, *moment3*, *moment4*, and *entropy*. The response variable is *class*.
+
+Now present a summary of the data, complete with data types and measures of central tendency and dispersion:
+(Note: I convert the _class_ variable from an integer to a factor. I run this analysis from the perspective of determining which banknotes are counterfeit: '0' equals 'no' (not counterfeit), '1' equals yes (counterfeit).)
+
+```{r banknote_summary, echo = TRUE}
+
+banknote.df$class <- factor(banknote.df$class, levels=c(0,1),
+                            labels=c("no", "yes"))
+
+
+# summarize data
+banknote.skim <- data.frame(skim(banknote.df))
+banknote.skim$value <- as.integer(banknote.skim$value)
+
+banknote.skim.tranform <- banknote.skim %>% 
+  filter(stat %in% c("missing","complete","n","n_unique","min","max","median","sd")) %>%
+  spread("stat","value") %>% 
+  select(-c(level))
+
+kable(banknote.skim.tranform)
+
+```
+
+Now visualize the data:
+```{r banknote_plots, fig.width = 10, fig.height = 10, echo = TRUE}
+
+# generate pair-wise XY-scatterplots of each pair of continuous variables including the outcome using color and/or shape (use pairs function)
+
+ggpairs(banknote.df, aes(color = class, alpha = 0.9)) + 
+  labs(
+    title = "Pair-wise Combinations of Continuous Variables in Banknote Data Set"
+  ) +
+  theme_linedraw()
+
+```
+
+
+The scatterplot above shows a few interesting features:
+
++ the distribution of _moment2_ and _moment3_ seem to be more "normal" than the other variables
++ _moment3_ and _moment4_ seems to have a strong, negative linear correlation between them
++ there seems to be a visible distinction in how _moment2_ and _moment3_ are grouped by those that are counterfeit ("Yes") and those that are not counterfeit ("No")
+
+Given that _moment2_ and _moment3_ seem to have close to constant variability, much of the variability in the _class_ variable can probably be explained by these two variables. In other words _moment2_ and _moment3_ are more likely to be more predictive with respect to discriminating real and counterfeit bank notes.
+
+This is probably not an easy problem to solve given that the data really only have one metric, _Wavelet Transformed image_, and the variables are really just a transformation of the 2nd to 4th moments of that metric about the mean. Different measurements of the bank notes may yield better predictions. 
+
+My guess is that there would be a high error rate in the data set, at about 75%. And since there is only one metric being used to determine counterfeit bank notes, I would expect a high error rate. The tradeoffs with a given level of error comes down to what would happen when Type I and Type II errors occur.
+
+Assume the null hypothesis is that a sample bank note is not counterfeit. For Type I errors, rejecting the null hypothesis when it is true will lead bank examiners to conclude that there are fewer counterfeit bank notes in circulation, thus raising the cost of penalty from the government if those bank notes are traced back to the bank.
+
+For Type II errors, failing to reject the null hypothesis when it is false will also be costly as the bank may take more bank notes out of circulation than is necessary. Though this cost would almost certainly be less than the cost borne by Type I errors.
+
+```{r banknote_cleanup, include = FALSE}
+
+rm(list=ls())
+
+```
+
+# Abalone
+
+In this problem, I load, explore, visualize, and comment on data that describes the age of snails with a few other variables.
+
+``` {r abalone_load}
+
+# load data
+url <- "http://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data"
+abalone.df <- read_delim(url, ",", col_names = c("sex","length","diameter","height","weight.whole","weight.shucked","weight.viscera","weight.shell","rings"))
+
+```
+
+Describe the data set attributes:
+```{r abalone_attributes}
+
+# name the data set attributes
+attributes <- data.frame(
+  "col_name" = c(
+    "sex",
+    "length",
+    "diameter",
+    "height",
+    "weight.whole",
+    "weight.shucked",
+    "weight.viscera",
+    "weight.shell",
+    "rings"), 
+  "attribute_name" = c(
+    "Sex",
+    "Length",
+    "Diameter", 
+    "Height",
+    "Whole Weight",
+    "Shucked Weight",
+    "Viscera Weight",
+    "Shell Weight",
+    "Rings"
+))
+
+kable(attributes)
+
+```
+
+
+The `abalone` data set has `r dim(abalone.df)[1] ` rows or observations and `r dim(abalone.df)[2]` columns or variables. The predictor variables are _sex_, _length_, _diameter_, _height_, _weight.whole_, _weight.shucked_, _weight.viscera_, and _weight.shell_. The response variable is _rings_. The _sex_ variable is a categorical dimension with three distinct values: "F", "I", and "M". All other variables are continuous variables.
+
+Now present a summary of the data, complete with data types and measures of central tendency and dispersion:
+```{r abalone_summary}
+
+# convert 'sex' variable from a character to a factor
+abalone.df$sex <- factor(abalone.df$sex)
+
+# summarize data
+abalone.skim <- data.frame(skim(abalone.df))
+abalone.skim$value <- as.integer(abalone.skim$value)
+
+abalone.skim.tranform <- abalone.skim %>% 
+  filter(stat %in% c("missing","complete","n","n_unique","min","max","median","sd")) %>%
+  spread("stat","value") %>% 
+  select(-c(level))
+
+kable(abalone.skim.tranform)
+
+```
+
+Now visualize the data:
+```{r abalone_plots, fig.width = 10, fig.height = 10, echo = TRUE}
+
+ggpairs(abalone.df, aes(color = sex, alpha = 0.9)) + 
+  labs(
+    title = "Pair-wise Combinations of Continuous Variables in Abalone Data Set"
+  ) +
+  theme_linedraw()
+
+```
+The scatterplot above shows a few interesting features:
+
++ there are distinct differences in the distributions of all the __weight__ variables, especially _weight.shucked_ and _weight.shell_
++ _length_, _diameter_, and _height_ have very strong, positive linear correlation among them
++ _length_ has a strong positive linear correlation with all other variables except for sex
+
+Given that all __weight__ variables seem to show a distinct difference in distribution among the sex of the snail, much of the variability in the _rings_ variable can probably be explained by these variables, particularly _weight.shucked_ and _weight.shell_. In other words _weight.shucked_ and _weight.shell_ are more likely to be more predictive with respect to determining the age of the abalone snail.
+ 
+
+
+
+Though boxplots grouped by sex are present in the pair-wise XY-scatterplots above, I will create two other boxplots with a sample of continuous data using the `geom_boxplot()` function in `ggplot2`.
+```{r abalone_boxplots, fig.width = 10, fig.height = 10, echo = TRUE}
+
+cut <- 0.2
+
+# length by rings
+ggplot(abalone.df, aes(x=length, y=rings)) + 
+  geom_boxplot(fill="steelblue", aes(group = cut_width(length, cut))) + 
+  labs(
+    title = "Box Plot of Abalone Length by Rings",
+    subtitle = c("Continuous variable Rings is cut into several sections")
+  ) + 
+  theme_linedraw()
+
+cut <- 0.2
+
+# diamter by rings
+ggplot(abalone.df, aes(x=diameter, y=rings)) + 
+  geom_boxplot(fill="steelblue", aes(group = cut_width(diameter, cut))) + 
+  labs(
+    title = "Box Plot of Abalone Diameter by Rings",
+    subtitle = c("Continuous variable Diameter is cut into several sections")
+  ) + 
+  theme_linedraw()
+
+
+```
+
+# Tibbles
+
+Tibbles are opinionated data.frames that adjust some of the legacy behaviors of R for data.frames. For instance, a tibble never changes the type of the inputs (e.g., if working with Census FIPS codes, it won't convert them to numerical values even though they are strings), it never changes the names of variables, and it never creates row names. If using the `tidyverse` package, functions in that package produce tibbles as its data.frame outputs. You can also create a new tibble from individual vectors with `tibble()`.
+
+There are two main differences between a tibble and a data.frame: printing and subsetting. With printing, tibbles only show the first 10 rows and all the columns that fit on a screen. In the printed report, the tibble shows the data type for each column in the output. For example, the `abalone.df` defined above is a tibble and printing it will result in the following: 
+
+``` {r tibble_diff, echo=FALSE}
+abalone.df
+```
+
+With subsetting, if you want to pull out a single variable, the `$` and `[[]]` are useful features. To extract a variable from a tibble by name, use `$`. To extract a variable by name or position, use `[[]]`. For example, to extract the `height` variable from the `abalone` data set, you refer to it by position:
+
+```{r tibble_example, echo = TRUE}
+
+as_tibble(abalone.df[[1]])
+
+```
+
+To use these in a pipe, you’ll need to use the special placeholder .:, as in `abalone.df %>% .$x`.
+
+Also, compared to a data.frame, tibbles are more strict: they never do partial matching, and they will generate a warning if the column you are trying to access does not exist.
+
+```{r abalone_cleanup, include = FALSE}
+
+rm(list=ls())
+
+```

@@ -1,0 +1,129 @@
+---
+title: 'CSCI E-63C: Week 3 Q&A session'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(ISLR)
+library(reshape2)
+library(car)
+library(GGally)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Questions
+
+* Homework 1
+* Past lectures
+* Upcoming homework
+* Upcoming quiz
+
+# Anscombe's quartet
+
+Very similar datasets with very similar descriptive stats:
+
+https://en.wikipedia.org/wiki/Anscombe's_quartet
+
+
+# ISLR Ch.3.7 (Exercises -- applied)
+
+## Problem 8
+
+```{r autosummpred}
+head(Auto)
+summary(Auto)
+if ( FALSE ) {
+  summary(lm(mpg~horsepower))
+}
+summary(lm(mpg~horsepower,Auto))
+predict(lm(mpg~horsepower,Auto),newdata=data.frame(horsepower=98),interval="confidence")
+predict(lm(mpg~horsepower,Auto),newdata=data.frame(horsepower=98),interval="prediction")
+```
+
+
+```{r autolm, fig.width=7, fig.height=6}
+plot(Auto[,c("horsepower","mpg")],xlim=c(0,250))
+abline(lm(mpg~horsepower,Auto),col="red",lwd=2)
+abline(v=0)
+abline(h=coef(lm(mpg~horsepower,Auto))[1])
+```
+
+```{r lmdiag}
+old.par <- par(mfrow=c(2,2),ps=16)
+plot(lm(mpg~horsepower,Auto))
+par(old.par)
+```
+
+```{r autolog}
+summary(lm(log(mpg)~log(horsepower),Auto))
+confint(lm(log(mpg)~log(horsepower),Auto))
+exp(predict(lm(log(mpg)~log(horsepower),Auto),newdata=data.frame(horsepower=98),interval="confidence"))
+exp(predict(lm(log(mpg)~log(horsepower),Auto),newdata=data.frame(horsepower=98),interval="prediction"))
+```
+
+```{r autologplot, fig.width=7, fig.height=6}
+plot(log(Auto[,c("horsepower","mpg")]))
+abline(lm(log(mpg)~log(horsepower),Auto))
+```
+
+```{r autologdiag, fig.width=7, fig.height=6}
+old.par <- par(mfrow=c(2,2),ps=16)
+plot(lm(log(mpg)~log(horsepower),Auto))
+par(old.par)
+```
+
+```{r autopairs, fig.width=7, fig.height=6}
+pairs(Auto[,colnames(Auto)!="name"],lower.panel=function(x,y)legend("topleft",paste("",signif(cor(x,y,method="spearman"),2)),bty="n"))
+ggpairs(Auto[,-ncol(Auto)])
+```
+
+
+```{r autovif}
+summary(lm(mpg~.,Auto[,colnames(Auto)!="name"]))
+vif(lm(mpg~.,Auto[,colnames(Auto)!="name"]))
+vif(lm(mpg~.-displacement,Auto[,colnames(Auto)!="name"]))
+vif(lm(mpg~.-displacement-weight,Auto[,colnames(Auto)!="name"]))
+summary(lm(mpg~.-displacement-weight,Auto[,colnames(Auto)!="name"]))
+```
+
+```{r autolmdiagall, fig.width=7, fig.height=6}
+old.par <- par(mfrow=c(2,2),ps=16)
+plot(lm(mpg~.,Auto[,colnames(Auto)!="name"]))
+par(old.par)
+```
+
+
+```{r autolmdiag5vars, fig.width=7, fig.height=6}
+old.par <- par(mfrow=c(2,2),ps=16)
+plot(lm(mpg~cylinders+horsepower+acceleration+year+origin,Auto[,colnames(Auto)!="name"]))
+par(old.par)
+```
+
+```{r autolmdiaglog5vars, fig.width=7, fig.height=6}
+old.par <- par(mfrow=c(2,2),ps=16)
+plot(lm(log(mpg)~cylinders+horsepower+acceleration+year+origin,Auto[,colnames(Auto)!="name"]))
+par(old.par)
+```
+
+```{r autologlminter5vars}
+summary(lm(log(mpg)~cylinders*horsepower*acceleration*year*origin,Auto[,colnames(Auto)!="name"]))
+```
+
+## Problem 10
+
+```{r carseats}
+summary(lm(Sales~Price+Urban+US,Carseats))
+summary(lm(Sales~Price+US,Carseats))
+anova(lm(Sales~Price+US,Carseats),lm(Sales~Price+Urban+US,Carseats))
+confint(lm(Sales~Price+US,Carseats))
+confint(lm(Sales~Price+US,Carseats),level=0.90)
+summary(lm(Sales~Price*Urban*US,Carseats))
+```
+
+
+```{r carseatslmdiag, fig.width=7, fig.height=6}
+old.par <- par(mfrow=c(2,2),ps=16)
+plot(lm(Sales~Price+US,Carseats))
+par(old.par)
+```
