@@ -1,0 +1,203 @@
+---
+title: "CSCI E-63C: Week 4 Assignment"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+# Preface
+
+This assignment is focused on using resampling (specifically, bootstrap) to estimate and compare training and test error of linear models with progressively increasing number of variables as linear and quadratic (ultimately all pairwise combinations) terms. The goal is to advance your familiarity with fitting multiple regression models, to develop hands on experience with use of resampling and to observe first hand the discrepancy in the trending of training and test error with the increase in model complexity.
+
+The assignment will use new dataset available at UCI ML repository -- https://archive.ics.uci.edu/ml/datasets/Computer+Hardware -- on CPU performance (from quaint times of processors speed in single digits MHz).  As before, you are encouraged to download and use a copy local to your machine to decrease the dependency on availability of UCI ML website.  For the same purposes a copy of this dataset is also made available at this course website in canvas.  Below main steps of the assignment are illustrated on a simulated dataset.
+
+For the purposes of this illustration we start with developing an R function that produces a simulated dataset for given numbers of observations and variables. Its output includes given number of i.i.d. standard normal deviates as well as all their pairwise combinations in addition to the outcome as an unweighted average of a given subset of these variables with controlled amount of gaussian noise added to it.  Admittedly, gross oversimplification of any real-life dataset typically encountered in the wild, but it will suffice for our purposes (to see through resampling the divergence of training and test errors with increasing model complexity):
+
+```{r simuLinQuadDat}
+simuLinQuadDat <- function(inpNobs=100, inpNlinVars=5, inpYidx=1:2, inpSDerr=0.5) {
+  # Nobs x Nvars matrix of linear terms:
+  xTmp <- matrix(rnorm(inpNobs*inpNlinVars),ncol=inpNlinVars)
+  # Make all pairwise products of linear terms,
+  # X1*X1, X1*X2, X1*X3, ..., Xn*Xn:
+  x2Tmp <- NULL
+  tmpCnms <- NULL
+  # for each linear term:
+  for ( iTmp in 1:dim(xTmp)[2] ) {
+    # multiply it by itself and all other terms,
+    # excluding already generated pairwise combinations: 
+    for ( jTmp in iTmp:dim(xTmp)[2] ) {
+      x2Tmp <- cbind(x2Tmp,xTmp[,iTmp]*xTmp[,jTmp])
+      # maintain vector of column names for quadratic
+      # terms along the way:
+      tmpCnms <- c(tmpCnms,paste0("X",iTmp,"X",jTmp))
+    }
+  }
+  # name attributes in the matrix of quadratic terms:
+  colnames(x2Tmp) <- tmpCnms
+  # create outcome as a sum of an unweighted average of 
+  # specified columns and controlled amount 
+  # of gaussian noise:
+  yTmp <- rowMeans(cbind(xTmp,x2Tmp)[,inpYidx])+rnorm(inpNobs,sd=inpSDerr)
+  # return data.frame with outcome as a first column,
+  # followed by linear, then by quadratic terms:
+  data.frame(Y=yTmp,xTmp,x2Tmp)
+}
+```
+
+For the purposes of this assignment you will have the computer hardware dataset to work with, so that you won't have to simulate data from standard normal.  However, this assignment will ask you to include all pairwise products of its continuous attributes in the model, so some aspects of the above code will have to be incorporated in your work.
+
+Now, let's simulate a dataset using the default parameters, briefly look it over and fit a couple of linear models to it:
+
+```{r exampleSimulDat}
+simDat <- simuLinQuadDat()
+class(simDat)
+dim(simDat)
+head(simDat)
+pairs(simDat[,1:5])
+```
+
+For defaults of $n=100$ observations and $k=5$ linear terms it returns a `data.frame` of $n$ rows and $p=1+k+k*(k+1)/2$ columns (outcome, linear terms, all pairwise quadratic combinations). Because, by default, the outcome is the average of first two attributes (with added noise), they show noticeable correlation with the outcome, unlike others.
+
+For the purposes of model fitting, the terms can be either explicitly provided by the formula:
+
+```{r simDatLmExplEq}
+lm(Y~X1+X2+X1X1+X1X2+X2X2,simDat)
+```
+
+or, by providing `lm()` with a subset of columns in the input data and using formula that incorporates all terms from the input data in the model:
+
+```{r simDatLmSubsetAll}
+lm(Y~.,simDat[,c("Y","X1","X2","X1X1","X1X2","X2X2")])
+```
+
+or, equivalently, by numeric indices into `data.frame` columns:
+
+```{r simDatLmSubsetIdx}
+lm(Y~.,simDat[,c(1:3,7,8,12)])
+```
+
+*Explicit* inclusion of model terms in the formula is the most suitable for interactive model fitting, easiest to read and understand and overall is the recommended approach for these reasons.  Using `as.formula` and `paste` with suitable value for `collapse` (e.g. `"+"`, `"*"` and/or `":"`) called on a proper subset of data frame column names one can compile and parse model formulas _dynamically_ -- for instance, the code chunk below fits exactly the same model as the code chunk above:
+
+```{r asformulaexample}
+lm(as.formula(paste0("Y~",paste(colnames(simDat)[c(2:3,7,8,12)],collapse="+"))),simDat)
+```
+
+However, the code or result of its execution is not much more readable as the one just before and practically speaking in both cases one has to provide correct sets of column indices anyway, so to march through models of increasing complexity programmatically we will use appropriate subsets of dataset instead.  Figuring out which indices to use is one of those tasks that are harder to do in the head, but easier to code.
+
+Let's create a dataset with $n=200$ observations and $k=6$ linear predictors (and corresponding quadratic terms) where outcome is the average of the first three linear terms with some noise added, fit linear models starting with one linear term all the way to all linear and quadratic terms included and plot resulting error:
+
+```{r simul200}
+simDat <- simuLinQuadDat(inpNobs=200, inpNlinVars=6, inpYidx=1:3, inpSDerr=1)
+df2plot <- NULL
+for ( iTmp in 2:dim(simDat)[2] ) {
+  lmTmp <- lm(Y~.,simDat[,1:iTmp])
+  errTmp <- sqrt(mean((simDat[,"Y"]-predict(lmTmp))^2))
+  df2plot <- rbind(df2plot,data.frame(nvars=iTmp-1,err=errTmp))
+}
+plot(df2plot,xlab="Number of variables",ylab="Regression error",main=paste(dim(simDat)[1],"observations"))
+```
+
+As one would expect, inclusion of the first three predictors (average of which plus noise *is* the outcome) results in the most dramatic decrease in the average quadratic difference between observed and predicted outcome (that is training error, of course -- because it is calculated on the same dataset that the model was fit to), followed by the gradual decrease in the error as more model terms are incorporated.  Here, we pretend to know which predictors are the most important and have to be included first and in which order the rest of them have to be added.  More disciplined approaches involve ordering predictors by their corresponding model improvement at each step of variable selection. We use this shortcut for the purposes of simplicity to allow us to focus on resampling and the difference between training and test errors.
+
+Two more caveats due here concern the notion of the degrees of freedom. First, once again for simplicity, the training error as calculated above is different from `sigma` slot in the output of `summary()` by $\sqrt{n/(n-p-1)}$ where $n$ is the number of observations and $p$ -- number of the variables included in the model (aka degrees of freedom used up by the model).  For more details, see for instance, corresponding section in [LHSP](http://www.jerrydallal.com/LHSP/dof.htm) -- that is a great source of all kinds of practical statistical wisdom.  Second, as the number of variables included in the model approaches about 10-20, for a given number of observations ($n=200$) it starts to exceed maximal recommended ratio of the number of observations to the number of predictors included in the model, that is also about 10-20 for the kind of signal/noise ratios typically encountered in biomedical and social sciences. In other words, fitting model with 27 variables on 200 observations is generally a bad idea, but we will see below that the discrepancy between training and test error for our examples kicks in way before that.
+
+Back to the demo -- the plot above demonstrates that the training error continues to decrease as the model complexity increases.  How the training and test errors would look like if model is trained on a bootstrap of the data and tested on the subset of the data not included in the bootstrap?  First, again, let's write a function evaluating inclusion of one to all predictors over a number of bootstraps. For the purposes of clarity and simplicity here we disregard existing bootstrap facilities that are available in R in packages such as `boot` and implement simple bootstrap resampling directly:
+
+```{r bootTrainTestFun}
+bootTrainTestErrOneAllVars <- function(inpDat,nBoot=100) {
+  # matrices and vector to store bootstrap training
+  # and test errors as well as training error for model
+  # fit on all observations -- for one through all
+  # variables in the dataset:
+  errTrain <- matrix(NA,nrow=nBoot,ncol=dim(inpDat)[2]-1)
+  errTest <- matrix(NA,nrow=nBoot,ncol=dim(inpDat)[2]-1)
+  allTrainErr <- numeric()
+  # first predictor is the second column in
+  # the input data - first is the outcome "Y":
+  for ( iTmp in 2:dim(inpDat)[2] ) {
+    # fit model and calculate error on all observations:
+    lmTmp <- lm(Y~.,inpDat[,1:iTmp])
+    allTrainErr[iTmp-1] <- sqrt(mean((inpDat[,"Y"]-predict(lmTmp))^2))
+    # draw repeated boostraps of the data:
+    for ( iBoot in 1:nBoot ) {
+      # replace=TRUE is critical for bootstrap to work correctly:
+      tmpBootIdx <- sample(dim(inpDat)[1],dim(inpDat)[1],replace=TRUE)
+      # model fit on the bootstrap sample and
+      # corresponding training error:
+      lmTmpBoot <- lm(Y~.,inpDat[tmpBootIdx,1:iTmp])
+      errTrain[iBoot,iTmp-1] <- sqrt(mean((inpDat[tmpBootIdx,"Y"]-predict(lmTmpBoot))^2))
+      # test error is calculated on the observations
+      # =not= in the bootstrap sample - thus "-tmpBootIdx"
+      errTest[iBoot,iTmp-1] <- sqrt(mean((inpDat[-tmpBootIdx,"Y"]-predict(lmTmpBoot,newdata=inpDat[-tmpBootIdx,1:iTmp]))^2))
+    }
+  }
+  # return results as different slots in the list:
+  list(bootTrain=errTrain,bootTest=errTest,allTrain=allTrainErr)
+}
+```
+
+Let's calculate training and test bootstrap errors (as well as training error on all observations) on the dataset we have already generated previously and plot them as function of the number of variables in the model:
+
+```{r bootErr200}
+# wrapper for plotting:
+plotBootRegrErrRes <- function(inpRes,inpPchClr=c(1,2,4),mainTxt="") {
+  matplot(1:length(inpRes$allTrain),cbind(inpRes$allTrain,colMeans(inpRes$bootTrain),colMeans(inpRes$bootTest)),pch=inpPchClr,col=inpPchClr,lty=1,type="b",xlab="Number of predictors",ylab="Regression error",main=mainTxt)
+  legend("topright",c("train all","train boot","test boot"),col=inpPchClr,text.col=inpPchClr,pch=inpPchClr,lty=1)
+}
+bootErrRes <- bootTrainTestErrOneAllVars(simDat,30)
+plotBootRegrErrRes(bootErrRes,mainTxt="200 observations")
+```
+
+Notice how test error starts to increase once all variables truly associated with the outcome has been already included in the model, while training errors continue to decrease reflecting overfit (and increasing contribution of the variance term to the model error).
+
+Lastly, let's repeat this exercise for two larger numbers of observations simulated under the same conditions:
+
+```{r simulThreeSz}
+old.par <- par(mfrow=c(1,3))
+for ( tmpNobs in c(200,500,1000) ) {
+  simDat <- simuLinQuadDat(inpNobs=tmpNobs, inpNlinVars=6, inpYidx=1:3, inpSDerr=1)
+  bootErrRes <- bootTrainTestErrOneAllVars(simDat,30)
+  plotBootRegrErrRes(bootErrRes,mainTxt=paste(tmpNobs,"observations"))
+}
+par(old.par)
+```
+
+Notice how  the increase in test error with the number of predictors becomes less pronounced for larger numbers of observations.
+
+To conclude, the examples above present code and analyses that are very close to what you will need to complete this assignment.  Please feel free to start with those examples and modify them as necessary.  And, as always, do ask questions if anything seems unclear.
+
+
+# Problem: estimating multiple regression error rate by resampling (60 points)
+
+This week assignment closely follows what is explained in the preface above, except that instead of using simulated dataset, you are expected to use dataset on CPU performance (from the 80s) available at UCI ML data archive (https://archive.ics.uci.edu/ml/datasets/Computer+Hardware) as well as on this course website in canvas (file `machine.data` there).  It is probably the best to download and use local copy on your computer.
+
+The first two columns -- vendor and model names -- are irrelevant for the regression task. The continuous (this is regression problem) outcome that we will model is PRP.  One of the continuous attributes in the dataset -- ERP, very highly correlated with PRP -- is a result of modeling PRP by the dataset contributors and has to be discarded as well.  In the end you should be working with a dataset with seven continuous attributes -- one outcome, PRP and six predictors (MYCT, MMIN, MMAX, CACH, CHMIN and CHMAX to use data contributors' notation).  Due to non-linearity affecting multiple attributes in this dataset, you are better off working with log transformed *both* predictors and the outcome -- because several values in this dataset are zeroes and to avoid dealing with NaNs just add "1" before log-transform to all values in this dataset (e.g. `cpuDat <- log(cpuDat+1)`).
+
+## Sub-problem 1: read in the dataset and provide numerical and graphical summaries (10 points)
+
+Use methods such as `summary` and `pairs` that have been used in the previous assigments.  Comment on the extent of the signal available in the data for modeling PRP. Rearrange columns in the dataset in the decreasing order of absolute values of their correlation with the outcome (PRP).  So that PRP is the first column, the next one is the predictor that is most (positively or negatively) correlated with it, and so on.  You may find it convenient to use R function `order` for that.
+
+
+## Sub-problem 2: add quadratic terms to the dataset (10 points)
+
+Use the code presented in the preface as a template to develop your own procedure for adding to the computer hardware dataset containing outcome (PRP) and all continuous predictors (MYCT through CHMAX) all pairwise products of continuous predictors (e.g. MYCT x MYCT, MYCT x MMIN, ..., CHMAX x CHMAX).  The data used here has to be the one from computer hardware dataset, _not_ simulated from normal distribution.  In the end your dataset should have 28 columns: PRP, 6 predictors and 6*7/2=21 of their pairwise combinations.
+
+
+## Sub-problem 3: fit multiple regression models on the entire dataset (10 points)
+
+As illustrated in the preface above, starting from the first, most correlated with PRP, predictor, fit linear models with one, two, ..., all 27 linear and quadratic terms on the entire dataset and calculate resulting (training) error for each of the models. Plot error as a function of the number of predictors in the model (similar to the plot in the preface that shows just the training error on the entire dataset).  Because the underlying data is different the plot you obtain here for computer hardware dataset will be different from that shown in the preface.  Please comment on this difference.
+
+
+## Sub-problem 4: develop function performing bootstrap on computer hardware dataset (15 points)
+
+Modify function `bootTrainTestErrOneAllVars` defined in the preface to perform similar kind of analysis on the computer hardware dataset.  Alternatively, you can determine what modifications are necessary to the computer hardware dataset, so that it can be used as input to `bootTrainTestErrOneAllVars`.
+
+
+## Sub-problem 5: use bootstrap to estimate training and test error on computer hardware dataset (15 points)
+
+Use function developed above to estimate training and test error in modeling PRP on the computer hardware dataset.  Plot and discuss the results.  Compare model error over the range of model complexity to that obtained by the dataset contributors (as a difference between ERP and PRP in the original full dataset once the log-transform performed before proceeding with modeling here has been accounted for -- by either calculating error on log-transform of PRP and ERP or transforming our model predictions back to the original scale of PRP measurements)

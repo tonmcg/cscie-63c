@@ -89,9 +89,37 @@ correlations.spearman <- cor(abalone.cont, method = c("spearman"))
 View(correlations.spearman)
 corrplot(correlations.spearman, order = "hclust")
 
-######## FIX THIS ##########
-#ggcorr(data = abalone.cont, method = c("spearman","pearson"))
-############################
+# pearson pairwise correlations
+ggcorr(
+  data = abalone.cont, 
+  #label = TRUE, 
+  method = c("pairwise", "pearson"),
+  label_alpha = TRUE,
+  geom = "circle",
+  max_size = 10,
+  min_size = 2,
+  size = 3,
+  hjust = 0.75,
+  nbreaks = 6,
+  angle = -45,
+  palette = "PuOr"
+)
+
+# spearman pairwise correlations
+ggcorr(
+  data = abalone.cont, 
+  #label = TRUE, 
+  method = c("pairwise", "spearman"),
+  label_alpha = TRUE,
+  geom = "circle",
+  max_size = 10,
+  min_size = 2,
+  size = 3,
+  hjust = 0.75,
+  nbreaks = 6,
+  angle = -45,
+  palette = "PuOr"
+)
 
 ggpairs(abalone.age, aes( color = sex, alpha = 0.9 )) + 
   labs(

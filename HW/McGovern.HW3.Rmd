@@ -39,14 +39,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```
 
-# Problem 1: model of age and shell weight
+# Problem 1
 
 In this problem, I load, model, visualize, and comment on data that predicts abalone snail age as a function of other physical attributes.
 
 ``` {r abalone_load, echo = TRUE }
 
 # load data
-url <- "/Users/Luxive/OneDrive/Software_Engineering/Harvard/CSCI E-63c/HW/abalone.data"
+url <- "http://archive.ics.uci.edu/ml/machine-learning-databases/abalone/abalone.data"
+#url <- "/Users/Luxive/OneDrive/Software_Engineering/Harvard/CSCI E-63c/HW/abalone.data"
 abalone.raw <- read_delim(url, ",", col_names = c("sex","length","diameter","height","weight.whole","weight.shucked","weight.viscera","weight.shell","rings"))
 
 ```
@@ -85,10 +86,9 @@ kable(attributes)
 
 The `abalone` data set has `r dim(abalone.raw)[1] ` rows or observations and `r dim(abalone.raw)[2]` columns or variables. The predictor variables are _sex_, _length_, _diameter_, _height_, _weight.whole_, _weight.shucked_, _weight.viscera_, and _weight.shell_. The response variable is _rings_. The _sex_ variable is a categorical dimension with three distinct values: "F", "I", and "M". All other variables are continuous variables.
 
-## Calculate correlations between all continuous attributes in the data set
+## Correlations
 
-### Pearson correlation
-
+The following chunk creates a Pearson correlation matrix:
 ```{r correlation_matrix_pearson, echo = TRUE }
 
 # convert 'sex' variable from a character to a factor
@@ -109,15 +109,33 @@ correlations.pearson <- cor(abalone.cont, method = c("pearson"))
 kable(correlations.pearson)
 
 ```
+
+The following chunk creates a Pearson correlation plot:
 ```{r correlation_plot_pearson, echo = TRUE }
 
 # visualize pearson correlation matrix
-corrplot(correlations.pearson, order = "hclust")
+#corrplot(correlations.pearson, order = "hclust")
+
+# pearson pairwise correlations
+ggcorr(
+  data = abalone.cont, 
+  #label = TRUE, 
+  method = c("pairwise", "pearson"),
+  label_alpha = TRUE,
+  geom = "circle",
+  max_size = 10,
+  min_size = 2,
+  size = 3,
+  hjust = 0.75,
+  nbreaks = 6,
+  angle = -45,
+  palette = "PuOr"
+)
+
 
 ```
 
-### Spearman correlation
-
+The following chunk creates a Spearman correlation matrix:
 ```{r correlation_matrix_spearman, echo = TRUE }
 
 # create Spearman correlation matrix
@@ -126,16 +144,37 @@ kable(correlations.spearman)
 
 ```
 
+The following chunk creates a Spearman correlation plot:
 ```{r correlation_plot_spearman, echo = TRUE }
 
 # visualize spearman correlation matrix
-corrplot(correlations.spearman, order = "hclust")
+#corrplot(correlations.spearman, order = "hclust")
+
+# spearman pairwise correlations
+ggcorr(
+  data = abalone.cont, 
+  #label = TRUE, 
+  method = c("pairwise", "spearman"),
+  label_alpha = TRUE,
+  geom = "circle",
+  max_size = 10,
+  min_size = 2,
+  size = 3,
+  hjust = 0.75,
+  nbreaks = 6,
+  angle = -45,
+  palette = "PuOr"
+)
+
 
 ```
 
+## Model
+
+The following chunk fits a linear model of `age` as an outcome of `weight.shell` as the predictor variable using the R function `lm`. I display the model summary results below:
 ```{r linear_model, echo = TRUE }
 
-#Fit linear model of age as outcome and shell weight as predictor using R function lm, 
+#Fit linear model of age as outcome and shell weight as predictor using R function lm
 model.linear <- lm(age ~ weight.shell, data = abalone.age)
 
 #display the result using summary function, use its output to answer the following questions:
@@ -143,15 +182,19 @@ summary(model.linear)
 
 ```
 
-The `weight.shell` predictor is significant at both the 5% and 1% levels, which suggests that this variable explains a significant amount of variability in the `age` response variable.
+## Model Summary Discussion
+
+The `weight.shell` predictor is significant given that the _p_ value is essentially zero, suggesting that this variable explains a significant amount of variability in the `age` response variable.
 
 The model $RSE$ is `r summary(model.linear)$sigma`. The model $R^2$ is `r summary(model.linear)$r.squared`.
 
-The y-intercept means that for an average shell weight of zero grams, the snail age would be about `r round(model.linear$coefficients[1],1)` years. This isn’t particularly meaningful as abalone snails should have a non-zero shell weight. The y-intercept is merely an adjustment constant that serves to adjust the line height of the linear model.
+The y-intercept term is the expected value of _Y_ when _X_ = 0. The y-intercept in this case means that for an average shell weight of zero grams, the snail age would be about `r round(model.linear$coefficients[1],1)` years. This isn’t particularly meaningful as abalone snails should have a non-zero shell weight. In this case, the y-intercept is merely an adjustment constant that serves to adjust the line height of the linear model.
 
 The coefficient for the `weight.shell` predictor variable is `r round(model.linear$coefficients[2],4)`, which means that for every one gram increase in shell weight, the `age` variable changes by about `r round(model.linear$coefficients[2],1)` years.
 
-## Create scatterplot of age and shell weight
+## Model Plot
+
+The following graph shows the linear relationship between abalone age in years and shell weight in grams, with observations grouped by sex as shown by the distinct colors.
 ```{r scatterplot, echo = TRUE }
 
 #Create scatterplot of age and shell weight and add regression line from the model to the plot
@@ -169,6 +212,23 @@ ggplot( data = abalone.age, aes( x = weight.shell, y = age )) +
 
 ```
 
+## Model Diagnostics Discussion
+
+The following four graphs are useful in evaluating model fit to the data. These graphs help illustrate how well OLS regression assumptions are being met:
+
++ _Normality_
+    - The "Normal Q-Q Plot"" is a probability distribution of the standardized residuals against values needed under the condition of normality. In other words, the residual values should also be normally distributed with a mean of zero. Points not on the 45&deg; line do not follow the normality assumption, which many points in this model do not.
+
++ _Independence_
+    - Unfortunately, these diagnostic plots bear no information on whether the dependent variables are independent. In other words, there is no way to know from the data if the shell weight of one abalone snail affects the shell weight of another.
+
++ _Linearity_
+    - If the dependent variable shows some sort of linear relationship to the response variable, then the "Residuals vs Fitted" plot should show that the model captures the variance in the data and that residuals show have a random pattern. It seems as there may be non-linear, curved relationship between `age` and `weight.shell`, suggesting that a tranformation of one or both of the variables may help. Compared to the scatterplot with the OLS line shown above, it has a negative slope and a slight curve, as mentioned above.
+
++ _Homoscedasticity_
+    - OLS regressions assume the error term has a constant variance. Meeting this requirement would have the points in the "Scale-Location" plot form randomly around the horizontal line. There seems to be some regularity of the squared standardized residuals suggesting that the model does not have a constant variance. Additionally, non-constant variances in the errors can be determined from the presence of a funnel shape from the residual plot. In fact, as the value of the response gets higher, the more the residual plot takes the form a funnel in the "Residuals vs Fitted" plot.
+
+The "Residuals vs Leverage" plot highlights points that may be outliers or high leverage points.
 
 ```{r linear_diagnostic_plot, echo = TRUE }
 
@@ -180,10 +240,7 @@ plot(model.linear)
 
 ```
 
-Comment on any irregularities that they present. 
-+For instance, does plot of residuals vs. fitted values suggest presence of non-linearity that remained unexplained by the model?
-+How does it compare to the plot of the predictor and outcome with regression line added to it that was generated above?
-
+The following chunk shows the confidence interval on model parameters:
 ```{r confidence_intervals, echo = TRUE }
 
 #Use function confint to obtain confidence intervals on model parameters
@@ -191,6 +248,7 @@ confint(model.linear)
 
 ```
 
+The following chunk uses the linear model to make predictions for new `weight.shell` values. It uses both the `confidence` and `prediction` attributes of the R `predict` function to obtain confidence and prediction intervals, respectively:
 ```{r linear_prediction, secho = TRUE }
 
 #Use this model and predict function to make predictions for shell weight values of 0.1, 0.2 and 0.3. 
@@ -200,14 +258,22 @@ predict(model.linear, data.frame(weight.shell = c(0.1, 0.2, 0.3)), interval = 'p
 
 ```
 
-Explain the differences between interpretation of:
+## Model Fit Discussion
 
-+confidence intervals on model parameters and model predictions
-+confidence and prediction intervals on model predictions
-+Comment on whether confidence or predicion intervals (on predictions) are wider and why
+To assess how accurate the coefficient estimate, $\beta_1$ -- the coefficient of the model parameter `weight.shell` -- is to the true population coefficient, standard errors are used to compute confidence intervals for $\beta_1$. From 3.1.2 of _ISLR_:
+
+>A 95% confidence interval is defined as a range of values such that with 95% interval probability, the range will contain the true unknown value of the parameter. The range is defined in terms of lower and upper limits computed from the sample of data.
+
+To assess how accurate the predicted response estimate is if an individual response that factors _irreducible error_, we use prediction intervals on model predictions. To assess how accurate the predicted response estimate is _on average_, we use confidence intervals on model predictions. From ISLR:
+
+>Prediction intervals will always be wider than confidence intervals because they account for the uncertainty associated with _irreducible error_.
 
 
 # Problem 2
+
+## Model
+
+In this problem, I use `lm()` to fit a regression model of _log-transformed_ `age` as linear function of _log-transformed_ `weight.shell`. I produce a summary of the model outputs, compare fits to previous outputs, graph the model, and produce and comment on diagnostic plots of model results.
 ```{r model_log, echo = TRUE}
 
 #Use lm() to fit a regression model of log-transformed age as linear function of log-transformed shell weight and use summary to evaluate its results. 
@@ -221,15 +287,24 @@ model.shell.log <- lm(lage ~ lshell, data = abalone.log.shell)
 summary(model.shell.log)
 
 ```
-  
-Can we compare fits obtained from using untransformed (above) and log-transformed attributes? 
-Can we directly compare $RSE$ from these two models? 
-What about comparing $R2R2$? What would we conclude from this? (Please consult ISLR Ch.3.1.3 if unsure) 
-What would be the physical meaning of model coefficients this time? 
-What does model intercept represent in this case, for example? 
-How sensible is this and how does it compare to that from the fit on untransformed data?
 
+## Model Summary Discussion
 
+We should not compare fits obtained from using untransformed and _log-transformed_ attributes since the outcome of the _log-transformed_ model is no longer a linear function of regressing `weight.shell` on `age`. As stated in ISLR 3.1.3:
+
+>The quality of a linear regression fit is typically assessed using two related quantities: the residual standard error ($RSE$) and the $R^2$.
+
+Given that the _log-transformed_ variables are no longer linearly related, it would be not be advisable to compare either the $RSE$ or the $R^2$ between the untransformed and _log-transformed_ models.
+
+The coefficient for the log `weight.shell` predictor variable is `r round(model.shell.log$coefficients[2],4)`, which means that for every one percent increase in shell weight grams, the average percent change in years in the `age` variable is about `r round(model.shell.log$coefficients[2],2) * 100`%.
+
+As before, the y-intercept term is the expected value of $log(Y)$ when $log(X)$ = 0. The y-intercept in this case means that for an average log shell weight of zero grams, the percent change in snail age in years would be about `r round(model.shell.log$coefficients[1],1) * 100`%, which does not have any real meaning. Again as before, the y-intercept is merely an adjustment constant that serves to adjust the line height of the _log-transformed_ model.
+
+A common interpretation of _log-transformed_ variables, as I have done above, is that of a _percent change_. 
+
+## Model Plot
+
+The following creates a XY-scatterplot of _log-transformed_ predictor and response and adds a corresponding regression line to it:
 ```{r scatterplot_log}
 
 #Create a XY-scatterplot of log-transformed predictor and response and add corresponding regression line to it.
@@ -247,9 +322,9 @@ ggplot( data = abalone.log.shell, aes( x = lshell, y = lage )) +
 
 ```
 
-Compare it to the same plot but in untransformed coordinates obtained above.
-What would you conclude from such comparison?
+Compared to the untransformed plot above, the _log-transformed_ plot shows a more better, more linearly-related fit to the data. Using a _log-transform_ on both the predictor and response variables gets us closer to establishing a better relationship between `weight.shell` and `age`.
 
+The chunk below makes diagnostic plots for model fit on _log-transformed_ predictor and response variables:
 ```{r log_diagnostic_plot, echo = TRUE}
 
 opar <- par(no.readonly=TRUE)
@@ -260,11 +335,20 @@ plot(model.shell.log)
 
 ```
 
+## Model Diagnostics Discussion
 
+While many of the same features are present in the diagnostic plots of the untransformed linear model, the _log-transformed_ "Residuals vs Fitted" plot shows less of a funnel shape and a close to linear relationship between the predictor and response variables, indicating a lower systematic relationship between residuals and predicted values.
 
-Compare their appearance to that for the model using original scale of measurements.
-What would you conclude from this comparison about their relative quality?
+The "Normal Q-Q" plot still shows that many of the residual values are still not normally distributed with a
+mean of 0. But there are more values on the 45&deg; line than before. The "Scale-Location" plot, on the other hand, is much like it was before: there still seems to be some regularity of the squared standardized residuals, suggesting that the model still does not have a constant variance.
 
+Finally, the diagnostic plots seem to indicate the the _log-transform_ model improves a bit over the untransformed model but still does not meet certain assumptions about OLS regressions, namely _Normality_ and _Homoscedasticity_. Perhaps adding more variables to the model may help.
+
+# Problem 3
+
+## Model
+
+In this problem, I explore effects of adding another variable to the model, continue using _log-transformed_ attributes and fit a model of _log-transformed_ age as a function of shell weight and shucked weight (both log-transformed also).
 ```{r multiple_model_log, echo = TRUE}
 
 #To explore effects of adding another variable to the model, continue using log-transformed attributes and fit a model of log-transformed age as a function of shell weight and shucked weight (both log-transformed also). 
@@ -275,14 +359,27 @@ model.shucked.log <- lm(lage ~ lshell + lshucked, data = abalone.log.shucked)
 
 ```
 
+I obtain and evaluate the summary of this model fit:
 ```{r multiple_model_summary, echo = TRUE}
 
-#Just an additive model – no interaction term is necessary at this point. 
-#Please obtain and evaluate the summary of this model fit, confidence intervals on its parameters and its diagnostic plots. 
+# obtain and evaluate the summary of this model fit
 summary(model.shucked.log)
 
 ```
 
+## Model Summary Discussion
+
+The coefficient for the log `weight.shell` predictor variable is `r round(model.shucked.log$coefficients[2],4)`, which means that, all else held constant, for every one percent increase in shell weight grams, the average percent change in years in the `age` variable is about `r round(model.shucked.log$coefficients[2],2) * 100`%. The coefficient for the log `weight.shucked` predictor variable is `r round(model.shucked.log$coefficients[3],4)`, which means that, all else held constant, for every one percent increase in shucked weight grams, the average percent change in years in the `age` variable is about `r round(model.shucked.log$coefficients[3],2) * 100`%.
+
+The following chunk shows the confidence interval on model parameters:
+```{r multiple_confidence_intervals, echo = TRUE }
+
+#Use function confint to obtain confidence intervals on model parameters
+confint(model.shucked.log)
+
+```
+
+The following chunk presents the model diagnostic plots:
 ```{r multiple_model_diagnostics, echo = TRUE}
 
 opar <- par(no.readonly=TRUE)
@@ -293,3 +390,11 @@ plot(model.shucked.log)
 
 
 ```
+
+## Model Diagnostics Discussion
+
+Adding the `weight.shucked` variable to the _log-transformed_ model seems to ameliorate many of the issues in both the single-variable untransformed and _log-transformed_ models.
+
+Namely, the "Residuals vs Fitted" plot seems to indicate that there is no systematic relationship between the residuals and the predicted values, suggesting the points are just random noise. Additionally, there seem to be yet more points along the 45&deg; straight line on the "Normal Q-Q" plot indicating that the OLS assumption of _Normality_ -- while still not met perfectly -- is much closer than before. Finally, there still seems to be some regularity of the squared standardized residuals in the "Scale-Location" plot, suggesting that the model still does not have a constant variance. But the points in this diagnostic plot are less regular than the previous two models, which leads me to surmise that while constant variance assumption is still not met, it is more constant than the other two models.
+
+In the final analysis, adding the log of `weight.shucked` to the model seems to have helped model fit and model diagnostics.
