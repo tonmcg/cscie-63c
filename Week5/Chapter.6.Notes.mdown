@@ -1,0 +1,15 @@
+# Feature selection or variable selection
+
+## Three important linear alternative to least squares regression:
++Subset (variable) selection
+	combination of all __p__ predictor variables in __p__ models
+	computationally becomes infeasible as __p__ becomes larger; i.e., there are 2^p model possibilities
+	statistically problematic as the higher the search space (larger __p__), the higher the chance of overfitting on training data
+		Forward stepwise selection takes a null model and adds __k__ predictor and chooses the predictors that have the greatest additional improvement to model fit
+			Best model is one with lowest RSS or R^2
+		Backward stepwise selection takes a model with all __p__ predictors and removes them individually to find the least useful predictor
+			This is just like decomposition in credit modeling
++Shrinkage (regularization)
+	reduces variance
+	often can set the coefficient of the variable to zero, thus also performing variable selection
++Dimension reduction
